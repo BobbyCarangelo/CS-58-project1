@@ -1,21 +1,15 @@
-// demo.c
+// album.c
 // CS 58
 // sample code to collect input from the user
-
-// sometimes, when you want both single-char input and longer text input,
-// using scanf and getc and such, one fetch may leave unconsumed characters
-// in stdin that confuses subsequent fetches.  
-// trailing newlines also can cause trouble.
-//
-// should these things cause you problems in proj1, this code may
-// prove helpful
-
-// adam salem, s.w. smith
-// updated sep 2020
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+
+#include <signal.h>   // for kill call
+#include <unistd.h>   // for fork call
+#include <sys/wait.h> // for waitpid
 
 #define STRING_LEN  32
 
@@ -55,7 +49,7 @@ int input_string(char *message, char *buffer, int len) {
   return rc;
 }
 
-
+/*
 // testing out the above code
 int main(int argc, char * argv[]) {
 
@@ -79,6 +73,63 @@ int main(int argc, char * argv[]) {
 
   return 0;
 }
+*/
 
+void exit_parent(int rc, int pid1, int pid2)
+{
+	fprintf(stderr, "parent exiting with code %d\n", rc);
+	if (pid1 > 0)
+		kill(pid1, SIGTERM);
+	if (pid2 > 0)
+		kill(pid2, SIGTERM);
+}
+
+int main (int argc, char *argv[])
+{
+	int rc = 0;
+	int status;
+	int pid1 = 0;
+	int pid2 = 0;
+	bool done = false;
+
+	char *buffer;
+
+	buffer = (char *)malloc(STRING_LEN);
+
+	if (NULL == buffer) {
+		fprintf(stderr,"malloc error\n");
+		return -1;
+	}
+
+	// while (!done)
+	// {
+	// 	input_string(">>>", buffer,STRING_LEN);
+  	// 	printf("that was [%s]\n", buffer);
+		
+	// }
+
+	pid1 = fork();
+
+	if (pid1 < 0)
+	{
+		printf("Error in fork\n");
+		exit_parent(-1, pid1, pid2);
+	}
+
+	if (pid1 == 0)
+	{
+		printf("Hello from child!\n");
+		rc = execlp("./convert", "convert", "-resize", "10%", "med1.jpg", "dest.jpg", NULL);
+		printf("Execlp failure with exit code: %d", rc);
+	}
+	else 
+	{
+		sleep(5);
+		printf("Hello from parent!\n");
+		waitpid(pid1, &status, 0);
+	}
+
+	return 0;
+}
 
   

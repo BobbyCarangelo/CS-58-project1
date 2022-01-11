@@ -1,14 +1,14 @@
 .SUFFIXES: .c
 
-SRCS = demo.c
+SRCS = album.c
 OBJS = $(SRCS:.c=.o)
-OUTPUT = demo
+OUTPUT = album 
 
 CC = gcc
 CFLAGS = 
 LIBS = 
 
-demo: $(OBJS)
+album:	$(OBJS)
 	$(CC) $(CFLAGS) -o $(OUTPUT) $(OBJS) $(LIBS)
 
 clean:
