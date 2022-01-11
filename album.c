@@ -1,6 +1,13 @@
-// album.c
-// CS 58
-// sample code to collect input from the user
+/**
+ * @file album.c
+ * @author Bobby Carangelo
+ * @brief Photo album program -- display, edit and caption jpgs. 
+ * 		  Demonstrates proper use of fork() and exec() to manage processes.
+ * 
+ * @version 0.1
+ * @date 2022-01-11
+ * 
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,32 +56,6 @@ int input_string(char *message, char *buffer, int len) {
   return rc;
 }
 
-/*
-// testing out the above code
-int main(int argc, char * argv[]) {
-
-  char *buffer;
-
-  buffer = (char *)malloc(STRING_LEN);
-
-  if (NULL == buffer) {
-    fprintf(stderr,"malloc error\n");
-    return -1;
-  }
-   
-
-  input_string("enter y/n", buffer,STRING_LEN);
-  printf("that was [%s]\n", buffer);
-
-  input_string("enter name", buffer,STRING_LEN);
-  printf("that was [%s]\n", buffer);
-
-  free(buffer);
-
-  return 0;
-}
-*/
-
 void exit_parent(int rc, int pid1, int pid2)
 {
 	fprintf(stderr, "parent exiting with code %d\n", rc);
@@ -84,51 +65,217 @@ void exit_parent(int rc, int pid1, int pid2)
 		kill(pid2, SIGTERM);
 }
 
-int main (int argc, char *argv[])
+/**
+ * @brief Display user options
+ * 
+ */
+void display_menu()
 {
-	int rc = 0;
-	int status;
+	printf("Options:\n");
+	printf("  'd' to display an image\n");
+	printf("  't' to generate a thumbnail\n");
+	printf("  'r' to rotate an image\n");
+	printf("  'c' to caption an image\n");
+	printf("  'q' to quit\n");
+}
+
+
+/**
+ * @brief creates child process that runs image magick display program
+ * 
+ * @param pic name of picture to be displayed -- must end in .jpg (doesn't check for this)
+ * @return int -- process id of child process, -1 on error  
+ */
+int execute_display(char *pic)
+{
 	int pid1 = 0;
-	int pid2 = 0;
-	bool done = false;
-
-	char *buffer;
-
-	buffer = (char *)malloc(STRING_LEN);
-
-	if (NULL == buffer) {
-		fprintf(stderr,"malloc error\n");
-		return -1;
-	}
-
-	// while (!done)
-	// {
-	// 	input_string(">>>", buffer,STRING_LEN);
-  	// 	printf("that was [%s]\n", buffer);
-		
-	// }
+	int rc = 0;
 
 	pid1 = fork();
 
 	if (pid1 < 0)
 	{
-		printf("Error in fork\n");
-		exit_parent(-1, pid1, pid2);
+		printf("error in fork call\n");
+		return -1;
 	}
 
+	/*child process execs display program*/
 	if (pid1 == 0)
 	{
-		printf("Hello from child!\n");
-		rc = execlp("./convert", "convert", "-resize", "10%", "med1.jpg", "dest.jpg", NULL);
+		printf("Hello from display child!\n");
+		rc = execlp("display", "display", pic, NULL);
+		
+		//shouldn't be reached
 		printf("Execlp failure with exit code: %d", rc);
-	}
-	else 
-	{
-		sleep(5);
-		printf("Hello from parent!\n");
-		waitpid(pid1, &status, 0);
+		return -1;
 	}
 
+	printf("hello from display parent, child process is: %d\n", pid1);
+
+	return pid1;
+}
+
+int display(char *buffer1)
+{
+	printf("which image would you like to display: \n");
+	input_string(">>>", buffer1, STRING_LEN);
+	return execute_display(buffer1);
+}
+
+/**
+ * @brief creates child process to create image thumnail
+ * 
+ * @param src source .jpg of large image
+ * @param dest destination .jpg of thumbnail
+ * @return int --  process id of child process, -1 on error  
+ */
+int execute_thumbnail(char *src, char *dest)
+{
+	int pid1 = 0;
+	int rc = 0;
+
+	pid1 = fork();
+
+	if (pid1 < 0)
+	{
+		printf("error in fork call\n");
+		return -1;
+	}
+
+	/*child process execs thumbnail program*/
+	if (pid1 == 0)
+	{
+		printf("Hello from thumbnail child!\n");
+		rc = execlp("convert", "convert", "-resize", "10%", src, dest, NULL);
+
+		//shouldn't be reached
+		printf("Execlp failure with exit code: %d", rc);
+		return -1;
+	}
+
+	printf("hello from thumbnail parent, child process is: %d\n", pid1);
+
+	return pid1;
+}
+
+int thumbnail(char *buffer1, char *buffer2)
+{
+	printf("which image would you like to generate a thumbnail for: \n");
+	input_string(">>>", buffer1, STRING_LEN);
+	printf("where would you like the thumbnail stored (must end in .jpg): \n");
+	input_string(">>>", buffer2, STRING_LEN);
+	execute_thumbnail(buffer1, buffer2);
+}
+
+
+
+/**
+ * @brief allocates buffer
+ * 
+ * @return char* -- pointer to buffer created
+ */
+char *init_buffer()
+{
+	char *buf;
+
+	buf = (char *)malloc(STRING_LEN);
+
+	if (NULL == buf) {
+		fprintf(stderr,"malloc error\n");
+		exit(-1);
+	}
+
+	return buf;
+}
+
+int execute_rotate(char *src, char *dir, char *dest)
+{
+	int pid1 = 0;
+	int rc = 0;
+
+	pid1 = fork();
+
+	if (pid1 < 0)
+	{
+		printf("error in fork call\n");
+		return -1;
+	}
+
+	/*child process execs thumbnail program*/
+	if (pid1 == 0)
+	{
+		printf("Hello from rotate child!\n");
+		rc = execlp("convert", "convert", "-rotate", dir, src, dest, NULL);
+
+		//shouldn't be reached
+		printf("Execlp failure with exit code: %d", rc);
+		return -1;
+	}
+
+	printf("hello from rotate parent, child process is: %d\n", pid1);
+
+	return pid1;
+}
+
+int rotate(char *buffer1, char *buffer2, char *buffer3)
+{
+	/*finish gethering user input*/
+	printf("which photo would you like to rotate:\n");
+	input_string(">>>", buffer1, STRING_LEN);
+	printf("which direction would you like to rotate the image: [l/r]:\n");
+	input_string(">>>", buffer2, STRING_LEN);
+	printf("where would you like the rotated stored (must end in .jpg): \n");
+	input_string(">>>", buffer3, STRING_LEN);
+
+	/*convert l/r to angle*/
+	if (strcmp(buffer2, "l") == 0)
+		strncpy(buffer2, "-90", STRING_LEN);
+	else
+		strncpy(buffer2, "90", STRING_LEN);
+
+	return execute_rotate(buffer1, buffer2, buffer3);
+}
+
+
+
+int main (int argc, char *argv[])
+{
+	bool done = false;
+
+	char *buffer1 = init_buffer();
+	char *buffer2 = init_buffer();
+	char *buffer3 = init_buffer();
+
+	/*main parent loop*/
+	while (!done)
+	{
+		display_menu();
+		input_string(">>>", buffer1, STRING_LEN);
+  		
+		switch (buffer1[0])
+		{
+			case 'd':
+				display(buffer1);
+				break;
+			case 't':
+				thumbnail(buffer1, buffer2);
+				break;
+			case 'r':
+				rotate(buffer1, buffer2, buffer3);
+				break;
+			case 'q':
+				printf("Leaving album program\n");
+				done = true;
+				break;
+			default:
+				printf("default triggered\n");
+				break;
+		}
+	}
+
+	free(buffer1);
+	free(buffer2);
+	free(buffer3);
 	return 0;
 }
 
