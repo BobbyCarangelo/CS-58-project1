@@ -20,6 +20,9 @@
 
 #define STRING_LEN  32
 
+
+/*************************** Utils ***************************/ 
+
 // prompt the user with message, and save input at buffer
 // (which should have space for at least len bytes)
 int input_string(char *message, char *buffer, int len) {
@@ -79,6 +82,26 @@ void display_menu()
 	printf("  'q' to quit\n");
 }
 
+/**
+ * @brief allocates buffer
+ * 
+ * @return char* -- pointer to buffer created
+ */
+char *init_buffer()
+{
+	char *buf;
+
+	buf = (char *)malloc(STRING_LEN);
+
+	if (NULL == buf) {
+		fprintf(stderr,"malloc error\n");
+		exit(-1);
+	}
+
+	return buf;
+}
+
+/*************************** Process Creators ***************************/ 
 
 /**
  * @brief creates child process that runs image magick display program
@@ -113,13 +136,6 @@ int execute_display(char *pic)
 	printf("hello from display parent, child process is: %d\n", pid1);
 
 	return pid1;
-}
-
-int display(char *buffer1)
-{
-	printf("which image would you like to display: \n");
-	input_string(">>>", buffer1, STRING_LEN);
-	return execute_display(buffer1);
 }
 
 /**
@@ -158,36 +174,6 @@ int execute_thumbnail(char *src, char *dest)
 	return pid1;
 }
 
-int thumbnail(char *buffer1, char *buffer2)
-{
-	printf("which image would you like to generate a thumbnail for: \n");
-	input_string(">>>", buffer1, STRING_LEN);
-	printf("where would you like the thumbnail stored (must end in .jpg): \n");
-	input_string(">>>", buffer2, STRING_LEN);
-	execute_thumbnail(buffer1, buffer2);
-}
-
-
-
-/**
- * @brief allocates buffer
- * 
- * @return char* -- pointer to buffer created
- */
-char *init_buffer()
-{
-	char *buf;
-
-	buf = (char *)malloc(STRING_LEN);
-
-	if (NULL == buf) {
-		fprintf(stderr,"malloc error\n");
-		exit(-1);
-	}
-
-	return buf;
-}
-
 int execute_rotate(char *src, char *dir, char *dest)
 {
 	int pid1 = 0;
@@ -217,6 +203,61 @@ int execute_rotate(char *src, char *dir, char *dest)
 	return pid1;
 }
 
+int execute_caption(char *pic, char *caption)
+{
+	int pid1 = 0;
+	int rc = 0;
+	int status;
+
+	pid1 = fork();
+
+	if (pid1 < 0)
+	{
+		printf("error in fork call\n");
+		return -1;
+	}
+
+	/*child process does caption program*/
+	if (pid1 == 0)
+	{
+		printf("Hello from caption child!\n");
+		printf("what would you like to make the caption for %s:\n", pic);
+		input_string(">>>", caption, STRING_LEN);
+		printf("caption entered: %s\n", caption);
+		exit(0);
+	}
+
+	printf("hello from caption parent, child process is: %d\n", pid1);
+
+	rc = waitpid(pid1, &status, 0);
+
+	if (rc < 0)
+	{
+		printf("error waiting\n");
+		return -1;
+	}
+
+	return pid1;
+}
+
+/*************************** UI helpers ***************************/ 
+
+int display(char *buffer1)
+{
+	printf("which image would you like to display: \n");
+	input_string(">>>", buffer1, STRING_LEN);
+	return execute_display(buffer1);
+}
+
+int thumbnail(char *buffer1, char *buffer2)
+{
+	printf("which image would you like to generate a thumbnail for: \n");
+	input_string(">>>", buffer1, STRING_LEN);
+	printf("where would you like the thumbnail stored (must end in .jpg): \n");
+	input_string(">>>", buffer2, STRING_LEN);
+	execute_thumbnail(buffer1, buffer2);
+}
+
 int rotate(char *buffer1, char *buffer2, char *buffer3)
 {
 	/*finish gethering user input*/
@@ -236,6 +277,12 @@ int rotate(char *buffer1, char *buffer2, char *buffer3)
 	return execute_rotate(buffer1, buffer2, buffer3);
 }
 
+int caption(char *buffer1, char *buffer2)
+{
+	printf("which image would you like to caption: \n");
+	input_string(">>>", buffer1, STRING_LEN);
+	return execute_caption(buffer1, buffer2);
+}
 
 
 int main (int argc, char *argv[])
@@ -262,6 +309,9 @@ int main (int argc, char *argv[])
 				break;
 			case 'r':
 				rotate(buffer1, buffer2, buffer3);
+				break;
+			case 'c':
+				caption(buffer1, buffer2);
 				break;
 			case 'q':
 				printf("Leaving album program\n");
