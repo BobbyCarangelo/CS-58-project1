@@ -5,7 +5,7 @@ OBJS = $(SRCS:.c=.o)
 OUTPUT = album 
 
 CC = gcc
-CFLAGS = 
+CFLAGS =
 LIBS = 
 
 album:	$(OBJS)

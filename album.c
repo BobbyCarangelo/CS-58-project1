@@ -19,8 +19,10 @@
 #include <sys/wait.h> // for waitpid
 
 #define STRING_LEN  32
-#define THUMBNAIL_NAME_SIZE 15 //size of string: "thumbnail_0"
-#define CAPTION_SIZE 51
+#define THUMBNAIL_NAME_SIZE 20  //size of string: "thumbnail_0" ****will overflow if > 999,999 photos
+#define MED_NAME_SIZE 13        //size of string: "med_0" ****will overflow if > 999,999 photos
+#define CAPTION_SIZE 32
+#define DIR_LEN 4               //size of string "-90"
 
 
 /*************************** Utils ***************************/ 
@@ -127,15 +129,12 @@ int execute_display(char *pic)
 	/*child process execs display program*/
 	if (pid1 == 0)
 	{
-		printf("Hello from display child!\n");
 		rc = execlp("display", "display", pic, NULL);
 		
 		//shouldn't be reached
 		printf("Execlp failure with exit code: %d", rc);
 		return -1;
 	}
-
-	printf("hello from display parent, child process is: %d\n", pid1);
 
 	return pid1;
 }
@@ -147,7 +146,7 @@ int execute_display(char *pic)
  * @param dest destination .jpg of thumbnail
  * @return int --  process id of child process, -1 on error  
  */
-int execute_thumbnail(char *src, char *dest)
+int execute_resize(char *src, char *dest, char *size)
 {
 	int pid1 = 0;
 	int rc = 0;
@@ -163,15 +162,12 @@ int execute_thumbnail(char *src, char *dest)
 	/*child process execs thumbnail program*/
 	if (pid1 == 0)
 	{
-		printf("Hello from thumbnail child!\n");
-		rc = execlp("convert", "convert", "-resize", "10%", src, dest, NULL);
+		rc = execlp("convert", "convert", "-resize", size, src, dest, NULL);
 
 		//shouldn't be reached
 		printf("Execlp failure with exit code: %d", rc);
 		exit -1;
 	}
-
-	printf("hello from thumbnail parent, child process is: %d\n", pid1);
 
 	return pid1;
 }
@@ -192,19 +188,12 @@ int execute_rotate(char *src, char *dest, char *dir)
 	/*child process execs thumbnail program*/
 	if (pid1 == 0)
 	{
-		printf("executing rotate: \n");
-		printf("	src: %s\n", src);
-		printf("	dest: %s\n", dest);
-		printf("	dir: %s\n", dir);
-
 		rc = execlp("convert", "convert", "-rotate", dir, src, dest, NULL);
 
 		//shouldn't be reached
 		printf("Execlp failure with exit code: %d", rc);
 		return -1;
 	}
-
-	printf("hello from rotate parent, child process is: %d\n", pid1);
 
 	return pid1;
 }
@@ -226,16 +215,11 @@ int execute_caption(char *pic, char *caption)
 	/*child process does caption program*/
 	if (pid1 == 0)
 	{
-		printf("Hello from caption child!\n");
 		printf("what would you like to make the caption for %s:\n", pic);
 		input_string(">>>", caption, STRING_LEN);
 		printf("caption entered: %s\n", caption);
 		exit(0);
 	}
-
-	printf("hello from caption parent, child process is: %d\n", pid1);
-
-	rc = waitpid(pid1, &status, 0);
 
 	if (rc < 0)
 	{
@@ -261,27 +245,38 @@ int thumbnail(char *buffer1, char *buffer2)
 	input_string(">>>", buffer1, STRING_LEN);
 	printf("where would you like the thumbnail stored (must end in .jpg): \n");
 	input_string(">>>", buffer2, STRING_LEN);
-	execute_thumbnail(buffer1, buffer2);
+	execute_resize(buffer1, buffer2, "10%");
 }
 
-int rotate(char *buffer1, char *buffer2, char *buffer3)
+int rotate_thumbnail(char *thumbnail, char *buffer1, char *buffer2, char dir[4])
 {
-	/*finish gethering user input*/
-	printf("which photo would you like to rotate:\n");
+	printf("Would you like to rotate the displayed picture[y/n]\n");
 	input_string(">>>", buffer1, STRING_LEN);
-	printf("which direction would you like to rotate the image: [l/r]:\n");
-	input_string(">>>", buffer2, STRING_LEN);
-	printf("where would you like the rotated stored (must end in .jpg): \n");
-	input_string(">>>", buffer3, STRING_LEN);
 
-	/*convert l/r to angle*/
-	if (strcmp(buffer2, "l") == 0)
-		strncpy(buffer2, "-90", STRING_LEN);
+	if (buffer1[0] == 'y')
+	{
+		printf("Which direction would you like to rotate the picture[l/r]\n");
+		input_string(">>>", buffer1, STRING_LEN);
+
+		if (buffer1[0] == 'l')
+		{
+			strncpy(dir, "-90", DIR_LEN);
+		}
+		else
+		{
+			strncpy(dir, "90", DIR_LEN);
+		}
+		return execute_rotate(thumbnail, thumbnail, dir);
+	}
 	else
-		strncpy(buffer2, "90", STRING_LEN);
+	{
+		strncpy(dir, "\0", DIR_LEN);
+		return -1;
+	}
 
-	return execute_rotate(buffer1, buffer2, buffer3);
 }
+
+
 
 int caption(char *buffer1, char *buffer2)
 {
@@ -290,111 +285,105 @@ int caption(char *buffer1, char *buffer2)
 	return execute_caption(buffer1, buffer2);
 }
 
+void print_string_arr(char **arr, int size, int wordsize)
+{
+	char *buff = (char *) malloc(sizeof(char) * wordsize);
+	for (int i = 0; i < size; i++)
+	{
+		strncpy(buff, (char *) arr + (i * wordsize), wordsize);
+		printf("ind: %d - %s\n", i, buff);
+	}
+	free(buff);
+}
+
+void record_caption(char *dest)
+{
+	printf("What would  you like to caption the displayed photo max 31 characters:\n");
+	input_string(">>>", dest, CAPTION_SIZE);
+}
+
 
 int main (int argc, char *argv[])
 {
-	bool done = false;
-
-	char *buffer1 = init_buffer();
-	char *buffer2 = init_buffer();
-	char *buffer3 = init_buffer();
-
-	// /*main parent loop*/
-	// while (!done)
-	// {
-	// 	display_menu();
-	// 	input_string(">>>", buffer1, STRING_LEN);
-  		
-	// 	switch (buffer1[0])
-	// 	{
-	// 		case 'd':
-	// 			display(buffer1);
-	// 			break;
-	// 		case 't':
-	// 			thumbnail(buffer1, buffer2);
-	// 			break;
-	// 		case 'r':
-	// 			rotate(buffer1, buffer2, buffer3);
-	// 			break;
-	// 		case 'c':
-	// 			caption(buffer1, buffer2);
-	// 			break;
-	// 		case 'q':
-	// 			printf("Leaving album program\n");
-	// 			done = true;
-	// 			break;
-	// 		default:
-	// 			printf("default triggered\n");
-	// 			break;
-	// 	}
-	// }
-
-	//for loop to start thumbnails
+	//finish if not .jpgs specified
 	if (argc <= 1)
 	{
 		printf("too few args\n");
 		return 0;
 	}
 
+	char *buffer1 = init_buffer();
+	char *buffer2 = init_buffer();
+	char *buffer3 = init_buffer();
+
+	/*for tracking ongoing processes*/
 	int thumbnail_pid_arr[argc - 1];
+	int med_pid_arr[argc - 1];
 	int display_pid_arr[argc - 1];
-	int rotate_pid_arr[argc - 1];
+	int rotate_thumnail_pid_arr[argc - 1];
+	int rotate_med_pid_arr[argc - 1];
 	int curr_pid = -1;
+	int display_pid;
+	
+	/*for recording names of pictures/captions/rotates*/
+	char thumbnail_names[argc - 1][THUMBNAIL_NAME_SIZE];
+	char med_names[argc - 1][MED_NAME_SIZE];
+	char caption_arr[argc - 1][CAPTION_SIZE];
+	char rotate_arr[argc - 1][DIR_LEN];
+
+	/*other*/
 	int rc;
 	int status;
-	
-	char thumbnail_buffer[THUMBNAIL_NAME_SIZE];
-	char caption_arr[CAPTION_SIZE];
-	strncpy(thumbnail_buffer, "thumbnail_0.jpg", THUMBNAIL_NAME_SIZE);
 
+	//for loop to start thumbnails
+	strncpy(buffer3, "10%", STRING_LEN);
 	for (int i = 1; i < argc; i++)
 	{
-		thumbnail_buffer[10] = i - 1 + '0';
-		printf("thumbnail title: %s\n", thumbnail_buffer);
-
-		curr_pid = execute_thumbnail(argv[i], thumbnail_buffer);
+		sprintf(thumbnail_names[i - 1], "thumbnail_%d.jpg", i);
+	
+		curr_pid = execute_resize(argv[i], thumbnail_names[i - 1], buffer3);
 
 		thumbnail_pid_arr[i - 1] = curr_pid;
 	}
+
+	printf("thumbnail name arr: \n");
+	print_string_arr((char **) thumbnail_names, argc - 1, THUMBNAIL_NAME_SIZE);
 
 	//start second for loop
 	for (int i = 0; i < argc - 1; i++)
 	{
 		rc = waitpid(thumbnail_pid_arr[i], &status, 0);
 
-		//display_pid_arr[i] = execute_display(argv[i + 1]);
+		display_pid = execute_display(thumbnail_names[i]);
 
-		printf("What would  you like to caption the displayed photo max 50 characters:\n");
-		input_string(">>>", buffer1, STRING_LEN);
-		strncpy(caption_arr[i], buffer1, CAPTION_SIZE);
+		record_caption(caption_arr[i]);
 
-		printf("Would you like to rotate the displayed picture[y/n]\n");
-		input_string(">>>", buffer1, STRING_LEN);
+		rotate_thumnail_pid_arr[i] = rotate_thumbnail(thumbnail_names[i], buffer1, buffer2, rotate_arr[i]);
 
-		if (buffer1[0] == 'y')
-		{
-			printf("Which direction would you like to rotate the picture[l/r]\n");
-			input_string(">>>", buffer1, STRING_LEN);
+		sprintf(med_names[i - 1], "med_%d.jpg", i);
+		strncpy(buffer3, "25%", STRING_LEN);
+		med_pid_arr[i] = execute_resize(argv[i + 1], med_names[i], buffer3);		
 
-			if (buffer1[0] == 'l')
-			{
-				strncpy(buffer2, "-90", STRING_LEN);
-			}
-			else
-			{
-				strncpy(buffer2, "-90", STRING_LEN);
-			}
-
-			printf("argv: %s\n", argv[i + 1]);
-			rotate_pid_arr[i] = execute_rotate(argv[i + 1], argv[i + 1], buffer2);
-		}
-		else
-		{
-			rotate_pid_arr[i] = -1;
-		}
-
-		//kill display process
+		kill(display_pid, SIGTERM);
 	}
+
+	printf("rotate arr:\n");
+	print_string_arr((char **) rotate_arr, argc - 1, DIR_LEN);
+
+	for (int i = 0; i < argc - 1; i++)
+	{	
+		rc = waitpid(med_pid_arr[i], &status, 0);
+
+		if (rotate_thumnail_pid_arr[i] < 0)
+		{
+			continue;
+		}
+
+		rotate_med_pid_arr[i] = execute_rotate(med_names[i], med_names[i], rotate_arr[i]);
+	}
+
+	printf("caption arr:\n");
+	print_string_arr((char **) caption_arr, argc - 1, CAPTION_SIZE);
 
 	//loop through all and write to html
 
