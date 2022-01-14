@@ -306,7 +306,7 @@ void record_caption(char *dest)
 void write_html(FILE *ofile, char *thumbnail, char *medium, char *caption, char *buffer)
 {
 	sprintf(buffer,
-		"Please click on a thumbnail to view a medium-size image\n\n<h2>%s</h2>\n\n<a href=\"%s\"><img src=\"%s\" border=\"1\"></a>\n\n</body>",
+		"Please click on a thumbnail to view a medium-size image\n\n<h2>%s</h2>\n\n<a href=\"%s\"><img src=\"%s\" border=\"1\"></a>\n\n</body>\n",
 		caption,
 		medium,
 		thumbnail);
@@ -350,7 +350,7 @@ int main (int argc, char *argv[])
 	int status;
 	FILE *index = fopen("./index.html", "w");
 	
-	strncpy(buffer_large, "<html><title>a sample index.html</title>\n<h1>a sample index.html</h1>\n", HTML_SIZE);
+	strncpy(buffer_large, "<html><title>your album.html</title>\n<h1>your album.html</h1>\n", HTML_SIZE);
 	fprintf(index, buffer_large, HTML_SIZE);
 
 	//for loop to start thumbnails
