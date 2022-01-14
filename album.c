@@ -23,6 +23,7 @@
 #define MED_NAME_SIZE 13        //size of string: "med_0" ****will overflow if > 999,999 photos
 #define CAPTION_SIZE 32
 #define DIR_LEN 4               //size of string "-90"
+#define HTML_SIZE 300
 
 
 /*************************** Utils ***************************/ 
@@ -302,6 +303,18 @@ void record_caption(char *dest)
 	input_string(">>>", dest, CAPTION_SIZE);
 }
 
+void write_html(FILE *ofile, char *thumbnail, char *medium, char *caption, char *buffer)
+{
+	sprintf(buffer,
+		"Please click on a thumbnail to view a medium-size image\n\n<h2>%s</h2>\n\n<a href=\"%s\"><img src=\"%s\" border=\"1\"></a>\n\n</body>",
+		caption,
+		medium,
+		thumbnail);
+
+	printf("buffer: %s\n", buffer);
+	fprintf(ofile, buffer, HTML_SIZE);
+}
+
 
 int main (int argc, char *argv[])
 {
@@ -315,6 +328,7 @@ int main (int argc, char *argv[])
 	char *buffer1 = init_buffer();
 	char *buffer2 = init_buffer();
 	char *buffer3 = init_buffer();
+	char *buffer_large = (char *) malloc(sizeof(char) * HTML_SIZE);
 
 	/*for tracking ongoing processes*/
 	int thumbnail_pid_arr[argc - 1];
@@ -334,12 +348,16 @@ int main (int argc, char *argv[])
 	/*other*/
 	int rc;
 	int status;
+	FILE *index = fopen("./index.html", "w");
+	
+	strncpy(buffer_large, "<html><title>a sample index.html</title>\n<h1>a sample index.html</h1>\n", HTML_SIZE);
+	fprintf(index, buffer_large, HTML_SIZE);
 
 	//for loop to start thumbnails
 	strncpy(buffer3, "10%", STRING_LEN);
 	for (int i = 1; i < argc; i++)
 	{
-		sprintf(thumbnail_names[i - 1], "thumbnail_%d.jpg", i);
+		sprintf(thumbnail_names[i - 1], "thumbnail_%d.jpg", i - 1);
 	
 		curr_pid = execute_resize(argv[i], thumbnail_names[i - 1], buffer3);
 
@@ -360,7 +378,7 @@ int main (int argc, char *argv[])
 
 		rotate_thumnail_pid_arr[i] = rotate_thumbnail(thumbnail_names[i], buffer1, buffer2, rotate_arr[i]);
 
-		sprintf(med_names[i - 1], "med_%d.jpg", i);
+		sprintf(med_names[i], "med_%d.jpg", i);
 		strncpy(buffer3, "25%", STRING_LEN);
 		med_pid_arr[i] = execute_resize(argv[i + 1], med_names[i], buffer3);		
 
@@ -370,16 +388,30 @@ int main (int argc, char *argv[])
 	printf("rotate arr:\n");
 	print_string_arr((char **) rotate_arr, argc - 1, DIR_LEN);
 
+	printf("med names:\n");
+	print_string_arr((char **) med_names, argc - 1, MED_NAME_SIZE);
+
 	for (int i = 0; i < argc - 1; i++)
 	{	
 		rc = waitpid(med_pid_arr[i], &status, 0);
 
 		if (rotate_thumnail_pid_arr[i] < 0)
 		{
+			rotate_med_pid_arr[i] = -1;
 			continue;
 		}
 
 		rotate_med_pid_arr[i] = execute_rotate(med_names[i], med_names[i], rotate_arr[i]);
+	}
+
+	for (int i = 0; i < argc - 1; i++)
+	{
+		if (rotate_med_pid_arr[i] > 0)
+		{
+			rc = waitpid(rotate_med_pid_arr[i], &status, 0);
+		}
+
+		write_html(index, thumbnail_names[i], med_names[i], caption_arr[i], buffer_large);
 	}
 
 	printf("caption arr:\n");
@@ -387,9 +419,11 @@ int main (int argc, char *argv[])
 
 	//loop through all and write to html
 
+	fclose(index);
 	free(buffer1);
 	free(buffer2);
 	free(buffer3);
+	free(buffer_large);
 	return 0;
 }
 
