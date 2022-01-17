@@ -1,22 +1,18 @@
-.SUFFIXES: .c
+CFLAGS=
 
-SRCS = album.c
-OBJS = $(SRCS:.c=.o)
-OUTPUT = album 
+all:	album
 
-CC = gcc
-CFLAGS =
-LIBS = 
+album_utils.o:	album_utils.c album_utils.h
+				gcc $(CFLAGS) -c album_utils.c
 
-album:	$(OBJS)
-	$(CC) $(CFLAGS) -o $(OUTPUT) $(OBJS) $(LIBS)
+process.o:		process.c process.h
+				gcc $(CFLAGS) -c process.c
+
+album.o:		album.c
+				gcc $(CFLAGS) -c album.c
+
+album:			album.o album_utils.o	process.o
+				gcc $(CFLAGS) album_utils.o process.o album.c -o album
 
 clean:
-	rm -f $(OBJS) $(OUTPUT)
-
-depend:
-	makedepend -I/usr/local/include/g++ -- $(CFLAGS) -- $(SRCS) 
-
-# DO NOT DELETE
-
-
+	rm *.o album

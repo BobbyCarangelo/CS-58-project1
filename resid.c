@@ -122,3 +122,40 @@
 
 // 	return pid1;
 // }
+
+/**
+ * @brief prompt and record user for a rotation of the displayed picture and rotate if necessary
+ * 
+ * @param thumbnail - picture to be rotated
+ * @param buffer1 - helpful for UI
+ * @param buffer2 - helpful for UI
+ * @param dir -for recording the direction
+ * @return int 
+ */
+// int rotate_thumbnail(char *thumbnail, char *buffer1, char dir[4])
+// {
+// 	printf("Would you like to rotate the displayed picture[y/n]\n");
+// 	input_string(">>>", buffer1, STRING_LEN);
+
+// 	if (buffer1[0] == 'y')
+// 	{
+// 		printf("Which direction would you like to rotate the picture[l/r]\n");
+// 		input_string(">>>", buffer1, STRING_LEN);
+
+// 		if (buffer1[0] == 'l')
+// 		{
+// 			strncpy(dir, "-90", DIR_LEN);
+// 		}
+// 		else
+// 		{
+// 			strncpy(dir, "90", DIR_LEN);
+// 		}
+// 		return execute_rotate(thumbnail, thumbnail, dir);
+// 	}
+// 	else
+// 	{
+// 		strncpy(dir, "\0", DIR_LEN);
+// 		return -1;
+// 	}
+// }
+
